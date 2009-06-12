@@ -54,7 +54,7 @@
   " A helper macro for use in ppr. "
   `(do (unless noindent sp.col)
        (let whole (tostring print.exp)
-	 (if (< len.whole oneline*)              
+	 (if (< len.whole oneline*)
 	     (do pr.whole nil)
 	     (do (pr "(")
 		 ,@body
@@ -65,22 +65,24 @@
   " Pretty print. This function displays arc code with proper
     indenting and representation of some syntax, such as quote,
     quasiquote, unquote, unquote-splicing, and make-br-fn. "
-  (aif (or atom.exp dotted.exp (is car.exp 'make-br-fn) (pprsyms* car.exp)) ;if it's an atom, dotted list or make-br-fn, print it.
+  (aif (or atom.exp dotted.exp (is car.exp 'make-br-fn) (pprsyms* car.exp))
         (do (unless noindent sp.col)
 	    print.exp
 	    nil)
-       (bodops* car.exp)		;if it's a bodop
+       (bodops* car.exp)
         (ppr-sub
 	 (if (is car.exp 'with)
 	     (do (pr "with (")
 		 (on e (pair cadr.exp) 
-		     [do 
-		       (if (mod index 2) 
-			   (prn)) 
-		       (map (fn (e) (ppr e (+ col 7))) _)])
+		     (do 
+		       (if (and (~is index 0) (mod index 2))
+			   (prn))
+		       (ppr car.e (+ col 7) (is index 0))
+		       (sp)
+		       (ppr cadr.e (+ col 8)) t)))
 		 (pr ")"))
-	     (let str (tostring:print-spaced (firstn it exp)) ;get the length of the string of the op + parameters
-	       (unless (is it 0) pr.str (sp))		  ;unless there are no arguments, print them and a space.
+	     (let str (tostring:print-spaced (firstn it exp))
+	       (unless (is it 0) pr.str (sp))		  
 	       (ppr exp.it (+ col len.str 2) t)))
 	 (map [do (prn) (ppr _ (+ col 2))]
 	      (nthcdr (+ it 1) exp)))
