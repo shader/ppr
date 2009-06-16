@@ -132,8 +132,8 @@
        and     ,[indent-basic _ 3 _2]
        or      ,[indent-basic _ 2 _2]
        nor     ,[indent-basic _ 3 _2]
-       case    ,(indent-case 4 1)
-       caselet ,(indent-case 7 2))))
+       case    ,(indent-case 1)
+       caselet ,(indent-case 2))))
 
 (def ppr (x (o col 0) (o noindent nil))
   " Pretty print. This function displays arc code with proper
