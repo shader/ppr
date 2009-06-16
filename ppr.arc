@@ -1,12 +1,3 @@
-(def prif (exp)
-  " Print the expression if it is 'true' "
-  (if exp (pr exp))) 
-
-(= bodops* (fill-table (table)
-   '(mac 2 let 2 with 1 while 1 def 2 fn 1 rfn 2 afn 1
-     when 1 unless 1 after 1 whilet 2 for 3 each 2 whenlet 2 awhen 1
-     whitepage 0 tag 1 form 1 aform 1 aformh 1 w/link 1 textarea 3 on 2 )))
-
 (= pprsyms* (fill-table (table) 
 			'(quote "'" 
 			  quasiquote "`"
@@ -21,84 +12,161 @@
   " Print the expressions in the list separated by spaces. "
   (when xs
     (print car.xs)
-    (each x cdr.xs (pr " ") print.x)))
+    (each x cdr.xs (sp) print.x)))
 
-(def print (exp)
+(def print (x)
   " Print an expression on one line, replacing quote, unquote,
     quasiquote, unquote-splicing, and make-br-fn with their respective symbols. " 
-  (do (aif (isa exp 'string)
-	    (do (pr #\" exp #\") nil)
-	   (or atom.exp dotted.exp)
-	    (do pr.exp nil)
-	   (pprsyms* car.exp)
-	    (do pr.it
-	       (print cadr.exp)
+  (do (aif (or atom.x dotted.x)
+	     (do write.x nil)
+	   (pprsyms* car.x)
+	     (do pr.it
+	       (print cadr.x)
 	       nil)
-	   (is car.exp 'make-br-fn)
-	    (do (pr "[") (print-spaced cadr.exp) (pr "]") nil)
-	   (do (pr "(") print-spaced.exp (pr ")") nil))
-      exp))
+	   (is car.x 'make-br-fn)
+	     (do (pr "[") (print-spaced cadr.x) (pr "]") nil)
+	   (do (pr "(") print-spaced.x (pr ")") nil))
+      x))
 
-(= oneline* 35)
+(= oneline* 45)
 
 (def len (x (o c 0))
   " Measures the length of a string, vector, table, list or dotted list. "
-  (if (isa x 'string) (mz:string-length x)
-      (isa x 'vec) (mz:vector-length x)
-      (isa x 'table) (mz:hash-table-count x)
+  (if (isa x 'string) ($.string-length x)
+      (isa x 'vec) ($.vector-length x)
+      (isa x 'table) ($.hash-table-count x)
       (and atom.x x) (+ c 1)
       acons.x (len cdr.x (+ c 1))
       c))
 
-(mac ppr-sub body
-  " A helper macro for use in ppr. "
+(mac indent (col . body)
   `(do (unless noindent sp.col)
-       (let whole (tostring print.exp)
-	 (if (< len.whole oneline*)
-	     (do pr.whole nil)
-	     (do (pr "(")
-		 ,@body
-		 (pr ")")
-		 t)))))
+       ,@body))
 
-(def ppr (exp (o col 0) (o noindent nil))
+(mac ppr-sub body
+  `(indent col
+      (let whole (tostring print.x)
+	(if (< len.whole oneline*)
+	    (do pr.whole nil)
+	    (do ,@body t)))))
+
+(def indent-pairs (xs (o col 0))
+  (let l (apply max (map len:tostring:print:car (keep [cdr _] pair.xs)))
+    (on x pair.xs
+	(if (~is index 0)
+	    (do (prn)
+		(sp col)))
+	(let str (tostring:print car.x)
+	  (if cdr.x
+	      (do pr.str
+		  (sp:- l len.str -1)
+		  (ppr cadr.x (+ col 1 l) t))
+	      (do (sp (+ l 1))
+		  pr.str))))))
+
+(def indent-block (xs (o col 0))
+  (each x xs (prn) (ppr x col)))
+
+(def indent-mac (xs l (o args 0) (o col 0))
+  (print-spaced (firstn args xs))
+  (indent-block (nthcdr args xs) (+ col 2)))
+
+(def indent-basic (xs l (o col 0))
+  (if (all [or atom._ (and (is car._ 'quote) (atom cadr._))]
+	   xs)
+      print-spaced.xs
+      (do (ppr car.xs (+ col 2 l) t)
+	  (indent-block cdr.xs (+ col 2 l)))))
+
+(def indent-wave (xs (o col 0))
+  (do (ppr car.xs col t)
+      (on x cdr.xs
+	  (prn)
+	  (ppr x (+ col (* 2 (mod (+ index 1) 2)))))))
+
+(= ifline* 20)
+
+(def indent-if (l)
+  (fn (xs (o col 0)) 
+      (if (< len.xs 4)
+	    (on x xs 
+		(if (~is index 0) (prn))
+		(ppr x (+ col 2 l) (is index 0)))
+	  (all [< (len:tostring print._) ifline*]
+	       pair.xs)
+	    (indent-pairs xs (+ col 2 l))
+	  (indent-wave xs (+ col 2 l)))))
+
+(def indent-with (l)
+  (fn (xs (o col 0))
+      (pr "(")
+      (indent-pairs car.xs (+ col 3 l))
+      (pr ")")
+      (indent-block cdr.xs (+ col 3))))
+
+(def indent-def (xs (o col 0))
+  (print-spaced (firstn 2 xs))
+  (if (isa xs.2 'string)
+      (do (prn)
+	  (sp (+ col 2))
+	  (pr #\" xs.2 #\")
+	  (indent-block (nthcdr 3 xs) (+ col 2)))
+      (indent-block (nthcdr 2 xs) (+ col 2))))
+
+(def indent-case (n)
+  (fn (xs (o col 0))
+      (print-spaced:firstn n xs)
+      (prn)
+      (sp (+ col 2))
+      (indent-pairs (nthcdr n xs) (+ col 2))))
+
+(= indent-rules* 
+   (fill-table (table)
+     `(if      ,(indent-if 2)
+       aif     ,(indent-if 3)
+       with    ,(indent-with 4)
+       withs   ,(indent-with 5)
+       def     ,indent-def
+       mac     ,indent-def
+       do      ,[indent-basic _ 2 _2]
+       and     ,[indent-basic _ 3 _2]
+       or      ,[indent-basic _ 2 _2]
+       nor     ,[indent-basic _ 3 _2]
+       case    ,(indent-case 4 1)
+       caselet ,(indent-case 7 2))))
+
+(def ppr (x (o col 0) (o noindent nil))
   " Pretty print. This function displays arc code with proper
-    indenting and representation of some syntax, such as quote,
-    quasiquote, unquote, unquote-splicing, and make-br-fn. "
-  (aif (or atom.exp dotted.exp (is car.exp 'make-br-fn) (pprsyms* car.exp))
-        (do (unless noindent sp.col)
-	    print.exp
-	    nil)
-       (bodops* car.exp)
-        (ppr-sub
-	 (if (is car.exp 'with)
-	     (do (pr "with (")
-		 (on e (pair cadr.exp) 
-		     (do 
-		       (if (and (~is index 0) (mod index 2))
-			   (prn))
-		       (ppr car.e (+ col 7) (is index 0))
-		       (sp)
-		       (ppr cadr.e (+ col 8)) t)))
-		 (pr ")"))
-	     (let str (tostring:print-spaced (firstn it exp))
-	       (unless (is it 0) pr.str (sp))		  
-	       (ppr exp.it (+ col len.str 2) t)))
-	 (map [do (prn) (ppr _ (+ col 2))]
-	      (nthcdr (+ it 1) exp)))
+    indenting and representation of syntax. "
+  (aif (or atom.x dotted.x)		;just print the expression if it's an atom or dotted list
+         (indent col
+	   print.x
+	   nil)
+       (is car.x 'make-br-fn)		;if the expression is a br-fn, print the brackets and then the contents
+         (ppr-sub
+	   (pr "[")
+	   (ppr cadr.x (+ col 1) t)
+	   (pr "]"))
+       (pprsyms* car.x)
+         (ppr-sub
+	   pr.it
+	   (ppr cadr.x (+ col len.it) t))
        (ppr-sub
-	(let carstr (tostring:print car.exp)
-	  pr.carstr
-	  (if cdr.exp
-	      (do (sp)
-		  (with (broke (ppr cadr.exp (+ col len.carstr 2) t)
-			 exps cddr.exp)
-		    (if exps (sp))
-		    (if (and no.broke
-			     (all [or atom._ (and (is car._ 'quote) (atom cadr._))]
-				  exps))
-			print-spaced.exps
-			(when exps
-			  (if (and (in car.exp 'aif 'if) (> len.exp 4))
-			      (on e exps (prn) (ppr e (+ col 2 len.carstr (mod (+ index 1) 2))))
-			      (each e exps (prn) (ppr e (+ col 2 len.carstr)))))))))))))
+	 (pr "(")
+	 (withs (proc car.x
+		 args sig.proc
+                 n    len.args
+		 str  (tostring:print proc)
+		 l    len.str
+		 xs   cdr.x)
+	   pr.str
+	   (when xs
+	     (sp)
+	     (aif indent-rules*.proc
+		    (it xs col)
+		  (and (isa proc 'sym) (bound proc) (isa (eval proc) 'mac))
+	            (if (or dotted.args (and args (~acons args)))
+			(indent-mac xs l (- len.args 1) col)
+			(indent-mac xs l 0 col))
+		    (indent-basic xs l col))))
+	 (pr ")"))))
