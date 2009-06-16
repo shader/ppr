@@ -1,0 +1,12 @@
+This is a pretty print function for PG's arc language. Currently it requires the Anarki version, as it uses the extended form of make-br-fn in places.
+
+Features:
+
+- It properly handles syntax such as quote, quasiquote, unquote, unquote-splicing, and make-br-fn
+- It uses pr for docstrings, so they appear as written.
+- It correctly indents most forms, and it is very easy to add special cases for forms that are not currently indented properly.
+
+Flaws:
+
+- It needs anarki as it uses the version of make-br-fn that can take multiple arguments.
+- It redefines len so that it can support dotted lists. It is fully backwards compatible with the old len, and should not cause any problems, but you should be aware of this fact.
