@@ -67,7 +67,7 @@
 (def indent-block (xs (o col 0))
   (each x xs (prn) (ppr x col)))
 
-(def indent-mac (xs l (o args 0) (o col 0))
+(def indent-mac (xs (o args 0) (o col 0))
   (print-spaced (firstn args xs))
   (indent-block (nthcdr args xs) (+ col 2)))
 
@@ -134,7 +134,7 @@
        nor     ,[indent-basic _ 3 _2]
        case    ,(indent-case 1)
        caselet ,(indent-case 2)
-       fn      ,[indent-mac _ 2 1 _2])))
+       fn      ,[indent-mac _ 1 _2])))
 
 (def ppr (x (o col 0) (o noindent nil))
   " Pretty print. This function displays arc code with proper
@@ -160,14 +160,17 @@
 		 str  (tostring:print proc)
 		 l    len.str
 		 xs   cdr.x)
-	   pr.str
-	   (when xs
-	     (sp)
-	     (aif indent-rules*.proc
-		    (it xs col)
-		  (and (isa proc 'sym) (bound proc) (isa (eval proc) 'mac))
-	            (if (or dotted.args (and args (~acons args)))
-			(indent-mac xs l (- len.args 1) col)
-			(indent-mac xs l 0 col))
-		    (indent-basic xs l col))))
-	 (pr ")"))))
+	   (if (isa proc 'cons)
+	       (do (ppr proc (+ col 1) t)
+		   (indent-block xs (+ col 1)))
+	       (do pr.str
+		   (when xs
+		     (sp)
+		     (aif indent-rules*.proc
+			    (it xs col)
+			  (and (isa proc 'sym) (bound proc) (isa (eval proc) 'mac))
+			    (if (or dotted.args (and args (~acons args)))
+				(indent-mac xs (- len.args 1) col)
+				(indent-mac xs 0 col))
+			  (indent-basic xs l col)))))
+	   (pr ")")))))
