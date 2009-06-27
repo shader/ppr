@@ -143,34 +143,35 @@
          (indent col
 	   print.x
 	   nil)
-       (is car.x 'make-br-fn)		;if the expression is a br-fn, print the brackets and then the contents
-         (ppr-sub
-	   (pr "[")
-	   (ppr cadr.x (+ col 1) t)
-	   (pr "]"))
        (pprsyms* car.x)
          (ppr-sub
 	   pr.it
 	   (ppr cadr.x (+ col len.it) t))
        (ppr-sub
-	 (pr "(")
-	 (withs (proc car.x
-		 args sig.proc
-                 n    len.args
-		 str  (tostring:print proc)
-		 l    len.str
-		 xs   cdr.x)
-	   (if (isa proc 'cons)
-	       (do (ppr proc (+ col 1) t)
-		   (indent-block xs (+ col 1)))
-	       (do pr.str
-		   (when xs
-		     (sp)
-		     (aif indent-rules*.proc
-			    (it xs col)
-			  (and (isa proc 'sym) (bound proc) (isa (eval proc) 'mac))
-			    (if (or dotted.args (and args (~acons args)))
-				(indent-mac xs (- len.args 1) col)
-				(indent-mac xs 0 col))
-			  (indent-basic xs l col)))))
-	   (pr ")")))))
+         (let end ")"
+	   (if (is car.x 'make-br-fn)
+	       (do (pr "[")
+		   (= end "]")
+		   (= x cadr.x)
+		   );++.col)
+	       (pr "("))
+	   (withs (proc car.x
+		   args sig.proc
+		   n    len.args
+		   str  (tostring:print proc)
+		   l    len.str
+		   xs   cdr.x)
+		  (if (isa proc 'cons)
+		      (do (ppr proc (+ col 1) t)
+			  (indent-block xs (+ col 1)))
+		      (do pr.str
+			  (when xs
+			    (sp)
+			    (aif indent-rules*.proc
+				   (it xs col)
+				 (and (isa proc 'sym) (bound proc) (isa (eval proc) 'mac))
+				   (if (or dotted.args (and args (~acons args)))
+				       (indent-mac xs (- len.args 1) col)
+				       (indent-mac xs 0 col))
+				 (indent-basic xs l col)))))
+		  pr.end)))))
